@@ -1,12 +1,14 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/fzh160616/admin.go/internal/dto"
 	"github.com/fzh160616/admin.go/internal/model"
+	"github.com/fzh160616/admin.go/internal/security"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pquerna/otp/totp"
@@ -15,12 +17,13 @@ import (
 )
 
 type AuthHandler struct {
-	db        *gorm.DB
-	jwtSecret string
+	db          *gorm.DB
+	jwtSecret   string
+	rateLimiter *security.LoginRateLimiter
 }
 
-func NewAuthHandler(db *gorm.DB, jwtSecret string) *AuthHandler {
-	return &AuthHandler{db: db, jwtSecret: jwtSecret}
+func NewAuthHandler(db *gorm.DB, jwtSecret string, rl *security.LoginRateLimiter) *AuthHandler {
+	return &AuthHandler{db: db, jwtSecret: jwtSecret, rateLimiter: rl}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -85,15 +88,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
+	if ok, remain := h.rateLimiter.Allow(ip, account); !ok {
+		h.writeLog(nil, account, ip, ua, false, "rate limited")
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"code":    429,
+			"message": fmt.Sprintf("too many attempts, retry after %d seconds", int(remain.Seconds())),
+		})
+		return
+	}
+
 	var user model.User
 	err := h.db.Where("username = ? OR email = ? OR phone = ?", account, strings.ToLower(account), account).First(&user).Error
 	if err != nil {
+		h.rateLimiter.RecordFailure(ip, account)
 		h.writeLog(nil, account, ip, ua, false, "user not found")
 		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "invalid credentials"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		h.rateLimiter.RecordFailure(ip, account)
 		h.writeLog(&user.ID, account, ip, ua, false, "wrong password")
 		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "invalid credentials"})
 		return
@@ -101,11 +115,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if user.TwoFAEnabled {
 		if req.TwoFACode == "" {
+			h.rateLimiter.RecordFailure(ip, account)
 			h.writeLog(&user.ID, account, ip, ua, false, "2fa required")
 			c.JSON(http.StatusUnauthorized, gin.H{"code": 4011, "message": "2fa required"})
 			return
 		}
 		if ok := totp.Validate(strings.TrimSpace(req.TwoFACode), user.TwoFASecret); !ok {
+			h.rateLimiter.RecordFailure(ip, account)
 			h.writeLog(&user.ID, account, ip, ua, false, "invalid 2fa code")
 			c.JSON(http.StatusUnauthorized, gin.H{"code": 4012, "message": "invalid 2fa code"})
 			return
@@ -124,6 +140,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	h.rateLimiter.RecordSuccess(ip, account)
 	h.writeLog(&user.ID, account, ip, ua, true, "login success")
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": gin.H{"token": token, "last_login_at": now}})
 }
