@@ -16,6 +16,27 @@ make run
 ## 接口
 
 - `GET /healthz` → `{ "status": "ok" }`
+- `POST /api/v1/login`（占位接口）
+
+示例请求：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"123456"}'
+```
+
+示例响应：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "token": "mock-token-for-dev"
+  }
+}
+```
 
 ## 常用命令
 
