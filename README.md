@@ -27,7 +27,11 @@ make run
 - `GET /healthz`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
-- `GET /api/v1/users?page=1&page_size=10&keyword=`（用户列表/分页/搜索）
+- `GET /api/v1/users?page=1&page_size=10&keyword=`（用户列表/分页/搜索，需JWT）
+- `POST /api/v1/users`（新增用户，需JWT）
+- `PUT /api/v1/users/:id`（编辑用户，需JWT）
+- `PATCH /api/v1/users/:id/status`（启用/禁用，需JWT）
+- `DELETE /api/v1/users/:id`（删除用户，需JWT）
 
 ### 注册示例
 

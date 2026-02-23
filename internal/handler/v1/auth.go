@@ -67,11 +67,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		"code":    0,
 		"message": "ok",
 		"data": gin.H{
-			"id":          user.ID,
-			"username":    user.Username,
-			"email":       user.Email,
-			"phone":       user.Phone,
-			"enable_2fa":  user.TwoFAEnabled,
+			"id":           user.ID,
+			"username":     user.Username,
+			"email":        user.Email,
+			"phone":        user.Phone,
+			"enable_2fa":   user.TwoFAEnabled,
 			"otp_auth_url": otpURL,
 		},
 	})
@@ -103,6 +103,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		h.rateLimiter.RecordFailure(ip, account)
 		h.writeLog(nil, account, ip, ua, false, "user not found")
 		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "invalid credentials"})
+		return
+	}
+
+	if !user.Enabled {
+		h.rateLimiter.RecordFailure(ip, account)
+		h.writeLog(&user.ID, account, ip, ua, false, "user disabled")
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "user disabled"})
 		return
 	}
 

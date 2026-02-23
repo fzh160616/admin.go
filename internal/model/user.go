@@ -10,6 +10,7 @@ type User struct {
 	PasswordHash string     `gorm:"size:255;not null" json:"-"`
 	TwoFAEnabled bool       `gorm:"not null;default:false" json:"two_fa_enabled"`
 	TwoFASecret  string     `gorm:"size:128" json:"-"`
+	Enabled      bool       `gorm:"not null;default:true" json:"enabled"`
 	LastLoginAt  *time.Time `json:"last_login_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
