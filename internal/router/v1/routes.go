@@ -18,6 +18,7 @@ func Register(rg *gin.RouterGroup, db *gorm.DB, jwtSecret string, rl *security.L
 	protected := rg.Group("")
 	protected.Use(middleware.JWTAuth(jwtSecret))
 	protected.GET("/users", user.List)
+	protected.GET("/users/:id/2fa-qrcode", user.Get2FAQRCode)
 	protected.POST("/users", user.Create)
 	protected.PUT("/users/:id", user.Update)
 	protected.PATCH("/users/:id/status", user.UpdateStatus)

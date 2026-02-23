@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"encoding/base64"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -8,6 +10,7 @@ import (
 	"github.com/fzh160616/admin.go/internal/dto"
 	"github.com/fzh160616/admin.go/internal/model"
 	"github.com/gin-gonic/gin"
+	"github.com/skip2/go-qrcode"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -143,4 +146,32 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok"})
+}
+
+func (h *UserHandler) Get2FAQRCode(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	if id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "invalid id"})
+		return
+	}
+
+	var user model.User
+	if err := h.db.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "user not found"})
+		return
+	}
+	if !user.TwoFAEnabled || strings.TrimSpace(user.TwoFASecret) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "2fa not enabled"})
+		return
+	}
+
+	otpURL := fmt.Sprintf("otpauth://totp/%s:%s?secret=%s&issuer=%s", "admin.go", user.Email, user.TwoFASecret, "admin.go")
+	png, err := qrcode.Encode(otpURL, qrcode.Medium, 256)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "generate qrcode failed"})
+		return
+	}
+
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": gin.H{"otp_auth_url": otpURL, "qrcode_data_url": dataURL}})
 }
