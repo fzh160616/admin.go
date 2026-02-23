@@ -27,6 +27,7 @@ make run
 - `GET /healthz`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `GET /api/v1/users?page=1&page_size=10&keyword=`（用户列表/分页/搜索）
 
 ### 注册示例
 

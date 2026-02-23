@@ -9,6 +9,9 @@ import (
 
 func Register(rg *gin.RouterGroup, db *gorm.DB, jwtSecret string, rl *security.LoginRateLimiter) {
 	auth := handlerv1.NewAuthHandler(db, jwtSecret, rl)
+	user := handlerv1.NewUserHandler(db)
+
 	rg.POST("/auth/register", auth.Register)
 	rg.POST("/auth/login", auth.Login)
+	rg.GET("/users", user.List)
 }
