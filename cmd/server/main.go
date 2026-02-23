@@ -2,20 +2,23 @@ package main
 
 import (
 	"log"
-	"os"
 
+	"github.com/fzh160616/admin.go/internal/config"
 	"github.com/fzh160616/admin.go/internal/router"
+	"github.com/fzh160616/admin.go/internal/store"
 )
 
 func main() {
-	r := router.New()
+	cfg := config.Load()
 
-	port := os.Getenv("APP_PORT")
-	if port == "" {
-		port = "8080"
+	db, err := store.NewMySQL(cfg.MySQLDSN)
+	if err != nil {
+		log.Fatalf("db init failed: %v", err)
 	}
 
-	addr := ":" + port
+	r := router.New(db, cfg.JWTSecret)
+
+	addr := ":" + cfg.AppPort
 	log.Printf("server starting on %s", addr)
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("server failed: %v", err)

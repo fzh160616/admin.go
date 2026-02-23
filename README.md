@@ -2,6 +2,14 @@
 
 后台后端项目（Go + Gin）。
 
+## 功能
+
+- 用户注册：支持用户名 / 邮箱 / 手机号
+- 用户登录：支持用户名 / 邮箱 / 手机号 + 密码
+- 2FA：基于 TOTP（Google Authenticator / Microsoft Authenticator 兼容）
+- 登录审计：记录每一次登录成功/失败日志（IP、UA、原因）
+- 最后登录时间：登录成功后更新 `last_login_at`
+
 ## 快速开始
 
 ```bash
@@ -15,27 +23,36 @@ make run
 
 ## 接口
 
-- `GET /healthz` → `{ "status": "ok" }`
-- `POST /api/v1/login`（占位接口）
+- `GET /healthz`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
 
-示例请求：
+### 注册示例
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/login \
+curl -X POST http://127.0.0.1:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"123456"}'
+  -d '{
+    "username":"admin",
+    "email":"admin@example.com",
+    "phone":"13800138000",
+    "password":"123456",
+    "enable_2fa":true
+  }'
 ```
 
-示例响应：
+> 当 `enable_2fa=true` 时，响应里会带 `otp_auth_url`，用于扫码绑定认证器。
 
-```json
-{
-  "code": 0,
-  "message": "ok",
-  "data": {
-    "token": "mock-token-for-dev"
-  }
-}
+### 登录示例（用户名/邮箱/手机号都可放在 account）
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account":"admin@example.com",
+    "password":"123456",
+    "two_fa_code":"123456"
+  }'
 ```
 
 ## 常用命令
